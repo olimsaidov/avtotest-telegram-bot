@@ -1,7 +1,7 @@
 (ns avtotest.routes.home
   (:require [avtotest.layout :as layout]
             [compojure.core :refer [defroutes GET POST]]
-            [ring.util.http-response :as response]
+            [clojure.tools.logging :as log]
             [avtotest.bot :refer [bot]]
             [clojure.java.io :as io]))
 
@@ -15,5 +15,10 @@
 (defroutes home-routes
   (GET "/" [] (home-page))
   (GET "/about" [] (about-page))
-  (POST "/telegram" {{updates :result} :body} (map #'bot updates)))
-
+  (POST "/telegram" request
+    (when (seq (:params request))
+      (try
+        (-> request :params bot)
+        (catch Exception e
+          (log/error e))))
+    {:status 200}))

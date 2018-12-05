@@ -90,7 +90,7 @@
             (str "https://api.telegram.org/bot" (:bot-token env) "/sendPhoto")
             {:as        :json
              :multipart [{:part-name "chat_id" :encoding "UTF-8" :content (str chat)}
-                         {:part-name "photo" :encoding "UTF-8" :content (io/file (io/resource (str "public/img/" (:image question)))) :name "photo.png"}
+                         {:part-name "photo" :encoding "UTF-8" :content (io/input-stream (io/resource (str "public/img/" (:image question)))) :name "photo.png"}
                          {:part-name "caption"
                           :encoding  "UTF-8"
                           :content   text}
@@ -158,7 +158,9 @@
                                            (= (:number sub-section) (parse-int sub-section-number)))))
                             (first))]
           (if (= (:correct question) (parse-int option-number))
-            (close-question question message chat)
+            (do (close-question question message chat)
+                (if-let [question (next-question chat)]
+                  (open-question question chat)))
             (t/answer-callback (:bot-token env) id "❌ Жавоб нотўғри"))))))
 
   (message-fn
@@ -167,7 +169,7 @@
         (cond
           (= "Кейинги савол" message)
           (if-let [question (next-question chat)]
-            (open-question (next-question chat) chat)
+            (open-question question chat)
             (t/send-text
               (:bot-token env)
               chat
