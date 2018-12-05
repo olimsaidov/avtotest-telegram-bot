@@ -122,7 +122,7 @@
                         :caption    text}})
       (t/edit-text
         (:bot-token env)
-        user
+        chat
         message
         text))))
 
@@ -252,7 +252,7 @@
                   {:parse_mode   "markdown"
                    :reply_markup standard-keyboard}
                   (format "Мавзу танланди: *%d. %s*\nСаволлар сони: %d"
-                     e     (:number section)
+                          (:number section)
                           (:title section)
                           (counts (:number section)))))))))))
 
@@ -263,8 +263,3 @@
         user
         {:reply_markup standard-keyboard}
         "Хуш келибсиз"))))
-
-
-(mount/defstate poll
-  :start (poll/start (:bot-token env) #'bot)
-  :stop (poll/stop poll))

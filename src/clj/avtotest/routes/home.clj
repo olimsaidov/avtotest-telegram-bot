@@ -1,7 +1,8 @@
 (ns avtotest.routes.home
   (:require [avtotest.layout :as layout]
-            [compojure.core :refer [defroutes GET]]
+            [compojure.core :refer [defroutes GET POST]]
             [ring.util.http-response :as response]
+            [avtotest.bot :refer [bot]]
             [clojure.java.io :as io]))
 
 (defn home-page []
@@ -13,5 +14,6 @@
 
 (defroutes home-routes
   (GET "/" [] (home-page))
-  (GET "/about" [] (about-page)))
+  (GET "/about" [] (about-page))
+  (POST "/telegram" {{updates :result} :body} (map #'bot updates)))
 
