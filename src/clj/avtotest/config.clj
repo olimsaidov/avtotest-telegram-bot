@@ -1,7 +1,8 @@
 (ns avtotest.config
-  (:require [cprop.core :refer [load-config]]
-            [cprop.source :as source]
+  (:require [cprop.source :as source]
+            [cprop.core :refer [load-config]]
             [mount.core :refer [args defstate]]))
+
 
 (defstate env
   :start

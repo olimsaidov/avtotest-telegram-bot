@@ -1,16 +1,12 @@
 (ns avtotest.core
-  (:require [avtotest.handler :as handler]
+  (:require [mount.core :as mount]
             [avtotest.nrepl :as nrepl]
+            [avtotest.handler :as handler]
             [luminus.http-server :as http]
             [avtotest.config :refer [env]]
-            [clojure.tools.cli :refer [parse-opts]]
-            [clojure.tools.logging :as log]
-            [mount.core :as mount])
+            [clojure.tools.logging :as log])
   (:gen-class))
 
-(def cli-options
-  [["-p" "--port PORT" "Port number"
-    :parse-fn #(Integer/parseInt %)]])
 
 (mount/defstate ^{:on-reload :noop} http-server
   :start
@@ -21,6 +17,7 @@
         (update :port #(or (-> env :options :port) %))))
   :stop
   (http/stop http-server))
+
 
 (mount/defstate ^{:on-reload :noop} repl-server
   :start
@@ -37,13 +34,12 @@
     (log/info component "stopped"))
   (shutdown-agents))
 
-(defn start-app [args]
-  (doseq [component (-> args
-                        (parse-opts cli-options)
-                        mount/start-with-args
-                        :started)]
+
+(defn start-app []
+  (doseq [component (:started (mount/start))]
     (log/info component "started"))
   (.addShutdownHook (Runtime/getRuntime) (Thread. stop-app)))
 
-(defn -main [& args]
-  (start-app args))
+
+(defn -main [& _]
+  (start-app))

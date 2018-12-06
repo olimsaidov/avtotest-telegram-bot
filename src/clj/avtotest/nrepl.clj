@@ -2,6 +2,7 @@
   (:require [nrepl.server :as nrepl]
             [clojure.tools.logging :as log]))
 
+
 (defn start
   "Start a network repl for debugging on specified port followed by
   an optional parameters map. The :bind, :transport-fn, :handler,
@@ -20,6 +21,7 @@
     (catch Throwable t
       (log/error t "failed to start nREPL")
       (throw t))))
+
 
 (defn stop [server]
   (nrepl/stop-server server)

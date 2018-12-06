@@ -2,7 +2,6 @@
   (:require [morse.api :as t]
             [clojure.edn :as edn]
             [mount.core :as mount]
-            [morse.polling :as poll]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clj-http.client :as http]

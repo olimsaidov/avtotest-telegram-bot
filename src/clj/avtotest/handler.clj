@@ -1,16 +1,31 @@
 (ns avtotest.handler
-  (:require [avtotest.middleware :as middleware]
-            [avtotest.layout :refer [error-page]]
-            [avtotest.routes.home :refer [home-routes]]
-            [compojure.core :refer [routes wrap-routes]]
-            [ring.util.http-response :as response]
+  (:require [mount.core :as mount]
             [compojure.route :as route]
+            [avtotest.bot :refer [bot]]
+            [avtotest.layout :as layout]
+            [clojure.tools.logging :as log]
             [avtotest.env :refer [defaults]]
-            [mount.core :as mount]))
+            [avtotest.middleware :as middleware]
+            [compojure.core :refer [routes wrap-routes defroutes GET POST]]))
+
 
 (mount/defstate init-app
   :start ((or (:init defaults) identity))
   :stop  ((or (:stop defaults) identity)))
+
+
+
+(defroutes home-routes
+  (GET "/" []
+    (layout/render "base.html"))
+  (POST "/telegram" request
+    (when (seq (:params request))
+      (try
+        (-> request :params bot)
+        (catch Throwable t
+          (log/error t (.getMessage t)))))
+    {:status 200}))
+
 
 (mount/defstate app
   :start
@@ -18,8 +33,5 @@
     (routes
       (-> #'home-routes
           (wrap-routes middleware/wrap-formats))
-      (route/not-found
-        (:body
-          (error-page {:status 404
-                       :title "page not found"}))))))
+      (route/not-found "Page not found"))))
 
