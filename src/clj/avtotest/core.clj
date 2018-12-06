@@ -4,7 +4,8 @@
             [avtotest.handler :as handler]
             [luminus.http-server :as http]
             [avtotest.config :refer [env]]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [luminus-migrations.core :as migrations])
   (:gen-class))
 
 
@@ -36,6 +37,9 @@
 
 
 (defn start-app []
+  (doseq [component (:started (mount/start #'avtotest.config/env))]
+    (log/info component "started"))
+  (migrations/migrate ["migrate"] (select-keys env [:database-url]))
   (doseq [component (:started (mount/start))]
     (log/info component "started"))
   (.addShutdownHook (Runtime/getRuntime) (Thread. stop-app)))

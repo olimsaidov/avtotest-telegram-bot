@@ -1,9 +1,12 @@
 (ns avtotest.bot
   (:require [morse.api :as t]
+            [avtotest.db :as db]
             [clojure.edn :as edn]
             [mount.core :as mount]
+            [avtotest.util :as util]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [avtotest.query :as query]
             [clj-http.client :as http]
             [morse.handlers :refer :all]
             [avtotest.config :refer [env]]
@@ -84,23 +87,33 @@
                                                     (-> question :sub-section :number) "."
                                                     (-> question :number) "."
                                                     number)})))]}]
-    (if (:image question)
-      (do (http/post
-            (str "https://api.telegram.org/bot" (:bot-token env) "/sendPhoto")
-            {:as        :json
-             :multipart [{:part-name "chat_id" :encoding "UTF-8" :content (str chat)}
-                         {:part-name "photo" :encoding "UTF-8" :content (io/input-stream (io/resource (str "public/img/" (:image question)))) :name "photo.png"}
-                         {:part-name "caption"
-                          :encoding  "UTF-8"
-                          :content   text}
-                         {:part-name "reply_markup"
-                          :encoding  "UTF-8"
-                          :content   (generate-string keyboard)}]}))
-      (t/send-text
-        (:bot-token env)
-        chat
-        {:reply_markup keyboard}
-        text))))
+    (let [{{message_id :message_id} :result}
+          (if (:image question)
+            (:body
+              (http/post
+                (str "https://api.telegram.org/bot" (:bot-token env) "/sendPhoto")
+                {:as        :json
+                 :multipart [{:part-name "chat_id" :encoding "UTF-8" :content (str chat)}
+                             {:part-name "photo" :encoding "UTF-8" :content (io/input-stream (io/resource (str "public/img/" (:image question)))) :name "photo.png"}
+                             {:part-name "caption"
+                              :encoding  "UTF-8"
+                              :content   text}
+                             {:part-name "reply_markup"
+                              :encoding  "UTF-8"
+                              :content   (generate-string keyboard)}]}))
+            (t/send-text
+              (:bot-token env)
+              chat
+              {:reply_markup keyboard}
+              text))]
+      (-> {:message_id  message_id
+           :user_id     chat
+           :section     (-> question :section :number)
+           :sub_section (-> question :sub-section :number)
+           :question    (-> question :number)
+           :created_at  (util/now)}
+          (query/insert-answer)
+          (db/query)))))
 
 
 (defn close-question
@@ -112,18 +125,24 @@
                        (first)
                        (:text)))]
     (if (:image question)
-      (http/post
-        (str "https://api.telegram.org/bot" (:bot-token env) "/editMessageCaption")
-        {:content-type :json
-         :as           :json
-         :form-params  {:chat_id    chat
-                        :message_id message
-                        :caption    text}})
+      (:body
+        (http/post
+          (str "https://api.telegram.org/bot" (:bot-token env) "/editMessageCaption")
+          {:content-type :json
+           :as           :json
+           :form-params  {:chat_id    chat
+                          :message_id message
+                          :caption    text}}))
       (t/edit-text
         (:bot-token env)
         chat
         message
-        text))))
+        text))
+    (-> {:message_id  message
+         :user_id     chat
+         :guessed_at  (util/now)}
+        (query/update-answer)
+        (db/query))))
 
 
 (def standard-keyboard
@@ -142,6 +161,16 @@
 
 
 (defhandler bot
+  (fn [update]
+    (let [from (or (-> update :message :from)
+                   (-> update :callback_query :from))]
+      (-> {:id         (:id from)
+           :first_name (:first_name from)
+           :last_name  (:last_name from)
+           :username   (:username from)}
+          (query/upsert-user)
+          (db/query)))
+    nil)
   (callback-fn
     (fn [{id                    :id
           {chat :id}            :from
@@ -160,7 +189,12 @@
             (do (close-question question message chat)
                 (if-let [question (next-question chat)]
                   (open-question question chat)))
-            (t/answer-callback (:bot-token env) id "❌ Жавоб нотўғри"))))))
+            (do (t/answer-callback (:bot-token env) id "❌ Жавоб нотўғри")
+                (-> (query/append-answer-try
+                      message
+                      chat
+                      (parse-int option-number))
+                    (db/query))))))))
 
   (message-fn
     (fn [{message :text {chat :id} :from}]
