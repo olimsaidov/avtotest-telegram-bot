@@ -138,9 +138,9 @@
         chat
         message
         text))
-    (-> {:message_id  message
-         :user_id     chat
-         :guessed_at  (util/now)}
+    (-> {:message_id message
+         :user_id    chat
+         :guessed_at (util/now)}
         (query/update-answer)
         (db/query))))
 
@@ -150,14 +150,23 @@
    :keyboard        [["Кейинги савол" "Мазвулар"]]})
 
 
-(defn next-question [chat]
+(defn next-question [chat question]
   (let [topic (get @topics chat)]
     (when (some? topic)
-      (let [[section sub-section] topic]
-        (cond->> questions
-                 (some? section) (filter #(= section (-> % :section :number)))
-                 (some? sub-section) (filter #(= sub-section (-> % :sub-section :number)))
-                 :then (rand-nth))))))
+      (let [[section sub-section] topic
+            questions (cond->> questions
+                               (some? section) (filter #(= section (-> % :section :number)))
+                               (some? sub-section) (filter #(= sub-section (-> % :sub-section :number))))]
+        (or (when question
+              (->> questions
+                   (sort-by (juxt
+                              #(-> % :section :number (or 0))
+                              #(-> % :sub-section :number (or 0))
+                              #(-> % :number (or 0))))
+                   (partition 2 1)
+                   (some (fn [[p n]]
+                           (when (= question p) n)))))
+            (first questions))))))
 
 
 (defhandler bot
@@ -187,7 +196,7 @@
                             (first))]
           (if (= (:correct question) (parse-int option-number))
             (do (close-question question message chat)
-                (if-let [question (next-question chat)]
+                (if-let [question (next-question chat question)]
                   (open-question question chat)))
             (do (t/answer-callback (:bot-token env) id "❌ Жавоб нотўғри")
                 (-> (query/append-answer-try
@@ -201,7 +210,7 @@
       (when message
         (cond
           (= "Кейинги савол" message)
-          (if-let [question (next-question chat)]
+          (if-let [question (next-question chat nil)]
             (open-question question chat)
             (t/send-text
               (:bot-token env)
