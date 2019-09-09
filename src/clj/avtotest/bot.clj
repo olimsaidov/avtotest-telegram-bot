@@ -257,6 +257,7 @@
                       (:number sub-section)
                       (:title sub-section)
                       (counts [(:number section) (:number sub-section)]))))
+
           (re-find #"^(\d+)\. (.+) \(\d+\)$" message)
           (let [[_ number text] (re-find #"^(\d+)\. (.+) \(\d+\)$" message)
                 section {:number (parse-int number) :title text}]
