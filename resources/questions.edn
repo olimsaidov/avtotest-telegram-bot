@@ -1937,7 +1937,7 @@
   :image       "image145.png"}
  {:number      10,
   :text        "Қуйидаги 3.27 «Тўхташ тақиқланган» белгисининг амал қилиш чегараси қаерда тугайди?",
-  :correct     3,
+  :correct     4,
   :section     {:number 4, :title "Йўл чизиқлари"},
   :sub-section {:number 1, :title "Ётиқ чизиқлар"},
   :options     [{:number 1, :text "Биринчи чорраҳада"}
